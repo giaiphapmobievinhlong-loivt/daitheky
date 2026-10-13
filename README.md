@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Đại Thế Kỷ – Quản lý & Đăng tin
 
-## Getting Started
+Website đồng bộ danh sách nhà từ hệ thống `tuan123.daitheky.net` và hỗ trợ đăng
+tin lên mạng xã hội.
 
-First, run the development server:
+Stack: **Next.js (App Router) · shadcn/ui · Drizzle ORM · Neon (Postgres) · Vercel**
+
+## Tính năng (Giai đoạn 1)
+
+- Đăng nhập bằng tài khoản `tuan123.daitheky.net`.
+- Nút **Đồng bộ dữ liệu**: kéo toàn bộ danh sách nhà về Neon (giữ nguyên trạng thái khảo sát đã lưu).
+- Bảng danh sách với bộ lọc: diện tích giảm dần, đường trước nhà (≥ m), kết cấu (số tầng), quận, phường, và trạng thái khảo sát.
+- Cột **địa chỉ** hiển thị đường/phường/quận, **ẩn số nhà** để đăng tin.
+- Đánh dấu **đã/chưa khảo sát**, ghi chú và **upload ảnh khảo sát** cho từng căn.
+- Nút **Đăng tin**: sinh nội dung theo mẫu (kèm SĐT 0379386629) để sao chép.
+- Nút **Tạo video** và đăng tự động FB/Group/Zalo/Threads: khung sẵn, sẽ mở dần ở giai đoạn sau.
+
+## Cài đặt
+
+### 1. Biến môi trường
+
+Sao chép `.env.example` thành `.env.local` và điền:
+
+| Biến | Lấy ở đâu |
+|------|-----------|
+| `DATABASE_URL` | Neon Console → project → Connection string (chọn *Pooled*) |
+| `SESSION_SECRET` | Chuỗi ngẫu nhiên ≥ 32 ký tự (vd: `openssl rand -base64 32`) |
+| `BLOB_READ_WRITE_TOKEN` | Vercel → Storage → Blob → Create store → token |
+
+### 2. Tạo bảng trong Neon
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run db:push     # đẩy schema trực tiếp
+# hoặc chạy SQL trong drizzle/0000_*.sql
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 3. Chạy local
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Mở http://localhost:3000 → đăng nhập → bấm **Đồng bộ dữ liệu**.
 
-## Learn More
+## Deploy Vercel
 
-To learn more about Next.js, take a look at the following resources:
+1. Push code lên GitHub, import vào Vercel.
+2. Thêm 3 biến môi trường ở trên trong Project Settings → Environment Variables.
+3. Tạo Blob store (tab Storage) để có `BLOB_READ_WRITE_TOKEN`.
+4. Deploy. Sau khi deploy chạy `npm run db:push` một lần (hoặc dùng SQL migration) để tạo bảng.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Lưu ý về đăng nhập nguồn
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Hệ thống nguồn chỉ cho **1 thiết bị/phiên**. Khi app này đăng nhập, phiên trên
+trình duyệt cũ ở `tuan123.daitheky.net` có thể bị đăng xuất, và ngược lại. Token
+phiên có hạn ~2–4 tuần; hết hạn chỉ cần đăng nhập lại trong app.
