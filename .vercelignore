@@ -1,0 +1,4 @@
+.env*
+drizzle/meta
+node_modules
+.next
