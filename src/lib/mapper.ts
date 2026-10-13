@@ -5,9 +5,9 @@ import type { NewListing } from "@/db/schema";
 function structureSummary(a?: SourceRecord["additional"]): string {
   if (!a) return "";
   const parts: string[] = [];
-  if (a.floor) parts.push(`${a.floor} tầng`);
-  if (a.room) parts.push(`${a.room} PN`);
-  if (a.toilet) parts.push(`${a.toilet} WC`);
+  if (a.floor && a.floor > 0) parts.push(`${a.floor} tầng`);
+  if (a.room && a.room > 0) parts.push(`${a.room} PN`);
+  if (a.toilet && a.toilet > 0) parts.push(`${a.toilet} WC`);
   return parts.join(" · ");
 }
 

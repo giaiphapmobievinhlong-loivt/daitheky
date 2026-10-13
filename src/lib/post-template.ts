@@ -24,8 +24,8 @@ export function buildPost(l: PostInput): string {
   const lines: string[] = [];
 
   const headlineBits: string[] = [];
-  if (l.floor) headlineBits.push(`NHÀ ${l.floor} TẦNG`);
-  if (l.front) headlineBits.push(`NGANG ${l.front}M`);
+  if (l.floor && l.floor > 0) headlineBits.push(`NHÀ ${l.floor} TẦNG`);
+  if (l.front && l.front > 0) headlineBits.push(`NGANG ${l.front}M`);
   headlineBits.push(`GIÁ ${formatPrice(l)}`);
   if (l.districtName) headlineBits.push(l.districtName.toUpperCase());
   lines.push(`🏡🔥 ${headlineBits.join(" – ")} 🔥🏡`);
