@@ -5,13 +5,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Combobox } from "@/components/ui/combobox";
 import {
   Table,
@@ -246,44 +239,49 @@ export function DashboardClient({ fullName }: { fullName: string }) {
           }}
         />
 
-        <Select value={floors} onValueChange={(v) => { setFloors(v); resetToFirstPage(); }}>
-          <SelectTrigger><SelectValue placeholder="Số tầng" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>Kết cấu: mọi số tầng</SelectItem>
-            {filtersData.floors.map((f) => (
-              <SelectItem key={f} value={String(f)}>{f} tầng</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Combobox
+          value={floors}
+          onChange={(v) => { setFloors(v); resetToFirstPage(); }}
+          placeholder="Mọi số tầng"
+          searchPlaceholder="Tìm số tầng..."
+          emptyText="Không có"
+          options={[
+            { value: ALL, label: "Kết cấu: mọi số tầng" },
+            ...filtersData.floors.map((f) => ({ value: String(f), label: `${f} tầng` })),
+          ]}
+        />
 
-        <Select value={surveyed} onValueChange={(v) => { setSurveyed(v); resetToFirstPage(); }}>
-          <SelectTrigger><SelectValue placeholder="Khảo sát" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>Mọi trạng thái</SelectItem>
-            <SelectItem value="yes">Đã khảo sát</SelectItem>
-            <SelectItem value="no">Chưa khảo sát</SelectItem>
-          </SelectContent>
-        </Select>
+        <Combobox
+          value={surveyed}
+          onChange={(v) => { setSurveyed(v); resetToFirstPage(); }}
+          placeholder="Khảo sát"
+          searchPlaceholder="Tìm..."
+          options={[
+            { value: ALL, label: "Mọi trạng thái" },
+            { value: "yes", label: "Đã khảo sát" },
+            { value: "no", label: "Chưa khảo sát" },
+          ]}
+        />
 
-        <Select
+        <Combobox
           value={`${sortBy}:${sortDir}`}
-          onValueChange={(v) => {
+          onChange={(v) => {
             const [b, d] = v.split(":");
             setSortBy(b);
             setSortDir(d);
             resetToFirstPage();
           }}
-        >
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="area:desc">Diện tích giảm dần</SelectItem>
-            <SelectItem value="area:asc">Diện tích tăng dần</SelectItem>
-            <SelectItem value="front:desc">Mặt tiền giảm dần</SelectItem>
-            <SelectItem value="price:asc">Giá tăng dần</SelectItem>
-            <SelectItem value="price:desc">Giá giảm dần</SelectItem>
-            <SelectItem value="modified:desc">Mới cập nhật</SelectItem>
-          </SelectContent>
-        </Select>
+          placeholder="Sắp xếp"
+          searchPlaceholder="Tìm cách sắp xếp..."
+          options={[
+            { value: "area:desc", label: "Diện tích giảm dần" },
+            { value: "area:asc", label: "Diện tích tăng dần" },
+            { value: "front:desc", label: "Mặt tiền giảm dần" },
+            { value: "price:asc", label: "Giá tăng dần" },
+            { value: "price:desc", label: "Giá giảm dần" },
+            { value: "modified:desc", label: "Mới cập nhật" },
+          ]}
+        />
 
         <div className="flex items-center gap-2">
           <Button variant="secondary" onClick={resetToFirstPage}>Lọc</Button>
