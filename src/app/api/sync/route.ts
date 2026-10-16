@@ -11,8 +11,10 @@ export const maxDuration = 60;
 
 /**
  * POST /api/sync
- * body: { offset?: number, pages?: number, pageSize?: number, keyword?: string }
- * Pulls a batch of pages from the source and upserts into Neon.
+ * body: { offset?: number, pageSize?: number, keyword?: string }
+ *
+ * Syncs exactly ONE page (pageSize, default 100) from the source per call.
+ * The client loops: pass the returned `nextOffset` back until `done` is true.
  * Local survey fields are preserved on conflict.
  */
 export async function POST(req: Request) {
@@ -21,32 +23,26 @@ export async function POST(req: Request) {
 
   const body = (await req.json().catch(() => ({}))) as {
     offset?: number;
-    pages?: number;
     pageSize?: number;
     keyword?: string;
   };
-  const pageSize = Math.min(Math.max(body.pageSize ?? 100, 1), 200);
-  const pages = Math.min(Math.max(body.pages ?? 5, 1), 20);
-  const startOffset = Math.max(body.offset ?? 0, 0);
+  const pageSize = Math.min(Math.max(body.pageSize ?? 100, 1), 100);
+  const offset = Math.max(body.offset ?? 0, 0);
   const keyword = body.keyword ?? "";
 
   try {
+    // Location names are only needed to resolve codes; fetch once per call.
     const provinces = await sourceLocal(session.sourceToken);
     const loc = buildLocationIndex(provinces);
 
-    let total = 0;
+    const { data, total } = await sourceSearch(session.sourceToken, {
+      size: pageSize,
+      offset,
+      keyword,
+    });
+
     let fetched = 0;
-    let offset = startOffset;
-
-    for (let p = 0; p < pages; p++) {
-      const { data, total: t } = await sourceSearch(session.sourceToken, {
-        size: pageSize,
-        offset,
-        keyword,
-      });
-      total = t;
-      if (data.length === 0) break;
-
+    if (data.length > 0) {
       const rows = data.map((r) => mapRecord(r, loc));
       await db
         .insert(listings)
@@ -89,24 +85,16 @@ export async function POST(req: Request) {
             sourcePublished: sql`excluded.source_published`,
             raw: sql`excluded.raw`,
             syncedAt: sql`excluded.synced_at`,
-            // NOTE: surveyed / survey_note / survey_photos / surveyed_at are intentionally NOT updated.
+            // survey fields intentionally NOT overwritten
           },
         });
-
-      fetched += data.length;
-      offset += data.length;
-      if (data.length < pageSize) break;
-      if (offset >= total) break;
+      fetched = data.length;
     }
 
-    const done = offset >= total;
-    return NextResponse.json({
-      ok: true,
-      fetched,
-      nextOffset: offset,
-      total,
-      done,
-    });
+    const nextOffset = offset + fetched;
+    const done = fetched < pageSize || nextOffset >= total;
+
+    return NextResponse.json({ ok: true, fetched, nextOffset, total, done });
   } catch (e) {
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Đồng bộ thất bại" },

@@ -122,12 +122,12 @@ export function DashboardClient({ fullName }: { fullName: string }) {
       let done = false;
       let grand = 0;
       let safety = 0;
-      while (!done && safety < 600) {
+      while (!done && safety < 2000) {
         safety++;
         const res = await fetch("/api/sync", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ offset, pages: 5, pageSize: 100 }),
+          body: JSON.stringify({ offset, pageSize: 100 }),
         });
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || "Đồng bộ thất bại");
