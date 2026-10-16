@@ -39,6 +39,19 @@ export async function sourceLogin(
   return { accessToken: json.data.access_token, user: json.data.user };
 }
 
+export async function sourceLogout(token: string): Promise<void> {
+  // Frees the single-device slot on the source so the user can sign in
+  // elsewhere (e.g. the tuan123.daitheky.net website) right after.
+  try {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: "GET",
+      headers: headers(token),
+    });
+  } catch {
+    // best-effort; don't block local logout if the source call fails
+  }
+}
+
 export type SourceRecord = {
   id: string;
   title?: string;
