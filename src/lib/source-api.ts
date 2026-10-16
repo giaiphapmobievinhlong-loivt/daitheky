@@ -25,12 +25,13 @@ function headers(token?: string): HeadersInit {
 
 export async function sourceLogin(
   username: string,
-  password: string
+  password: string,
+  sum?: string
 ): Promise<SourceLoginResult> {
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: "POST",
     headers: headers(),
-    body: JSON.stringify({ username, password, sum: DEVICE_SUM }),
+    body: JSON.stringify({ username, password, sum: sum || DEVICE_SUM }),
   });
   const json = await res.json().catch(() => ({}));
   if (json?.code !== 200 || !json?.data?.access_token) {

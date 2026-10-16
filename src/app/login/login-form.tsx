@@ -2,11 +2,25 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import FingerprintJS from "@fingerprintjs/fingerprintjs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
+
+// Computes the same browser fingerprint (visitorId) the source website uses,
+// so logging in here does not bump the user's session on tuan123.daitheky.net
+// when done from the same browser.
+async function getVisitorId(): Promise<string | undefined> {
+  try {
+    const fp = await FingerprintJS.load();
+    const { visitorId } = await fp.get();
+    return visitorId;
+  } catch {
+    return undefined;
+  }
+}
 
 export function LoginForm() {
   const router = useRouter();
@@ -18,10 +32,11 @@ export function LoginForm() {
     e.preventDefault();
     setLoading(true);
     try {
+      const sum = await getVisitorId();
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password, sum }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Đăng nhập thất bại");

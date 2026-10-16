@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
-import { getSession, destroySession } from "@/lib/auth";
-import { sourceLogout } from "@/lib/source-api";
+import { destroySession } from "@/lib/auth";
 
+// Local-only logout: clears this app's session cookie but does NOT call the
+// source /auth/logout. Because the app now logs in with the same browser
+// fingerprint as the website (same source "device"), releasing it here would
+// also sign the user out of tuan123.daitheky.net. Keeping it local lets both
+// stay signed in together.
 export async function POST() {
-  const session = await getSession();
-  if (session?.sourceToken) {
-    // Release the source single-device slot so the user can log in on the
-    // website / another device immediately after.
-    await sourceLogout(session.sourceToken);
-  }
   await destroySession();
   return NextResponse.json({ ok: true });
 }

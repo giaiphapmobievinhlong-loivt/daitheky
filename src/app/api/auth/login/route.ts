@@ -6,6 +6,7 @@ import { createSession } from "@/lib/auth";
 const schema = z.object({
   username: z.string().min(1),
   password: z.string().min(1),
+  sum: z.string().min(1).max(128).optional(),
 });
 
 export async function POST(req: Request) {
@@ -17,7 +18,8 @@ export async function POST(req: Request) {
   try {
     const { accessToken, user } = await sourceLogin(
       parsed.data.username,
-      parsed.data.password
+      parsed.data.password,
+      parsed.data.sum
     );
     await createSession({
       username: parsed.data.username,
