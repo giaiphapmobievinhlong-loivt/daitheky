@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Combobox } from "@/components/ui/combobox";
 import {
   Table,
   TableBody,
@@ -202,39 +203,37 @@ export function DashboardClient({ fullName }: { fullName: string }) {
           />
         </div>
 
-        <Select
+        <Combobox
           value={district}
-          onValueChange={(v) => {
+          onChange={(v) => {
             setDistrict(v);
             setWard(ALL);
             resetToFirstPage();
           }}
-        >
-          <SelectTrigger><SelectValue placeholder="Quận" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>Tất cả quận</SelectItem>
-            {filtersData.districts.map((d) => (
-              <SelectItem key={d.district} value={d.district}>{d.district}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          placeholder="Tất cả quận"
+          searchPlaceholder="Tìm quận..."
+          emptyText="Không tìm thấy quận"
+          options={[
+            { value: ALL, label: "Tất cả quận" },
+            ...filtersData.districts.map((d) => ({ value: d.district, label: d.district })),
+          ]}
+        />
 
-        <Select
+        <Combobox
           value={ward}
-          onValueChange={(v) => {
+          onChange={(v) => {
             setWard(v);
             resetToFirstPage();
           }}
           disabled={district === ALL}
-        >
-          <SelectTrigger><SelectValue placeholder="Phường" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>Tất cả phường</SelectItem>
-            {wardOptions.map((w) => (
-              <SelectItem key={w} value={w}>{w}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          placeholder="Tất cả phường"
+          searchPlaceholder="Tìm phường..."
+          emptyText="Không tìm thấy phường"
+          options={[
+            { value: ALL, label: "Tất cả phường" },
+            ...wardOptions.map((w) => ({ value: w, label: w })),
+          ]}
+        />
 
         <Input
           type="number"
