@@ -186,6 +186,12 @@ export function DashboardClient({ fullName }: { fullName: string }) {
         <div className="relative sm:col-span-2 lg:col-span-1">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
+            type="search"
+            name="dtk-search"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
             className="pl-8"
             placeholder="Tìm tiêu đề, đường..."
             value={keyword}
@@ -232,6 +238,7 @@ export function DashboardClient({ fullName }: { fullName: string }) {
 
         <Input
           type="number"
+          autoComplete="off"
           placeholder="Đường trước nhà ≥ (m)"
           value={minFront}
           onChange={(e) => setMinFront(e.target.value)}
