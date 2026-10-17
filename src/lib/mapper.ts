@@ -2,6 +2,25 @@ import type { SourceRecord } from "./source-api";
 import type { LocationIndex } from "./location";
 import type { NewListing } from "@/db/schema";
 
+/**
+ * Title syntax from the source:
+ *   (Địa chỉ) (Diện tích) (Tầng) (Ngang) (Dài) (Giá) tỷ (Phường) (Quận) ...
+ * The length (dài) is the number immediately before the price. We anchor on
+ * the price (the number right before "tỷ"/"tỉ") and take the number before it.
+ * Returns the parsed length, or null when the title does not match.
+ */
+export function parseLength(title?: string | null): number | null {
+  if (!title) return null;
+  // <length> <price> tỷ|tỉ  (length is the number just before the price)
+  const m = title.match(
+    /([0-9]+(?:[.,][0-9]+)?)\s+[0-9]+(?:[.,][0-9]+)?\s*[Tt][ỷỉ]/u
+  );
+  if (!m) return null;
+  const n = parseFloat(m[1].replace(",", "."));
+  if (!Number.isFinite(n) || n <= 0 || n > 1000) return null;
+  return n;
+}
+
 function structureSummary(a?: SourceRecord["additional"]): string {
   if (!a) return "";
   const parts: string[] = [];
@@ -38,6 +57,7 @@ export function mapRecord(r: SourceRecord, loc: LocationIndex): NewListing {
 
     area: r.area ?? null,
     front: r.additional?.front ?? null,
+    lengthM: parseLength(r.title),
     floor: r.additional?.floor ?? null,
     room: r.additional?.room ?? null,
     toilet: r.additional?.toilet ?? null,

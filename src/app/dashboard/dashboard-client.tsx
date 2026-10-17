@@ -297,7 +297,7 @@ export function DashboardClient({ fullName }: { fullName: string }) {
               <TableHead>Tiêu đề</TableHead>
               <TableHead>Địa chỉ</TableHead>
               <TableHead className="text-right">DT (m²)</TableHead>
-              <TableHead className="text-right">Mặt tiền</TableHead>
+              <TableHead className="text-right">Ngang × Dài</TableHead>
               <TableHead>Kết cấu</TableHead>
               <TableHead className="text-right">Giá</TableHead>
               <TableHead className="text-center">Khảo sát</TableHead>
@@ -335,7 +335,10 @@ export function DashboardClient({ fullName }: { fullName: string }) {
                     {publicAddress(r) || "—"}
                   </TableCell>
                   <TableCell className="text-right font-medium">{r.area ?? "—"}</TableCell>
-                  <TableCell className="text-right">{r.front ?? "—"}</TableCell>
+                  <TableCell className="text-right whitespace-nowrap">
+                    {r.front != null ? r.front : "—"}
+                    {r.lengthM != null ? ` × ${r.lengthM}` : ""}
+                  </TableCell>
                   <TableCell className="text-sm">{r.structure || "—"}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">{formatPrice(r)}</TableCell>
                   <TableCell className="text-center">

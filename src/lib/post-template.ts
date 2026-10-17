@@ -5,7 +5,8 @@ const CONTACT_LINE =
 
 export type PostInput = {
   floor?: number | null;
-  front?: number | null;
+  front?: number | null; // ngang (mặt tiền)
+  lengthM?: number | null; // dài
   area?: number | null;
   structure?: string | null;
   districtName?: string | null;
@@ -36,7 +37,13 @@ export function buildPost(l: PostInput): string {
 
   const specs: string[] = [];
   if (l.area != null) specs.push(`Diện tích: ${l.area}m²`);
-  if (l.front != null) specs.push(`Mặt tiền: ${l.front}m`);
+  if (l.front != null && l.front > 0 && l.lengthM != null && l.lengthM > 0) {
+    specs.push(`Kích thước: ${l.front}m x ${l.lengthM}m (ngang x dài)`);
+  } else if (l.front != null && l.front > 0) {
+    specs.push(`Ngang: ${l.front}m`);
+  } else if (l.lengthM != null && l.lengthM > 0) {
+    specs.push(`Dài: ${l.lengthM}m`);
+  }
   if (l.structure) specs.push(`Kết cấu: ${l.structure}`);
   if (specs.length) {
     lines.push("");

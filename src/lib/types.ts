@@ -12,6 +12,7 @@ export type ListingDTO = {
   priceAbsolute: number | null;
   area: number | null;
   front: number | null;
+  lengthM: number | null;
   floor: number | null;
   room: number | null;
   toilet: number | null;
