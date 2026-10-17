@@ -30,6 +30,72 @@ export function parseDims(title?: string | null): {
   return out;
 }
 
+const DIMS_RE =
+  /([0-9]+(?:[.,/][0-9]+)*)\s+([0-9]+(?:[.,][0-9]+)?)\s+[0-9]+(?:[.,][0-9]+)?\s*[Tt][ỷỉ]/u;
+const MESSY_STREET_RE = /\s\+\s|Thửa|Tờ|Mặt phố/iu;
+
+/**
+ * The source `street` sometimes holds a long list of parcels
+ * ("Mặt phố 562 + 561 ... Tờ 6 Đường 220") instead of a clean road name.
+ * When it does, derive the road name from the title's leading address
+ * (everything before the Diện tích value), dropping the house number.
+ */
+export function cleanStreet(
+  rawStreet?: string | null,
+  title?: string | null,
+  area?: number | null,
+  floor?: number | null
+): string | null {
+  const src = (rawStreet ?? "").trim();
+
+  let toks: string[];
+  if (src && !MESSY_STREET_RE.test(src)) {
+    // source street is already a clean road name
+    toks = src.split(/\s+/).filter(Boolean);
+  } else if (title) {
+    // derive the road name from the title's leading address (before Diện tích)
+    const m = title.match(DIMS_RE);
+    const prefix = (m && m.index != null ? title.slice(0, m.index) : title).trim();
+    toks = prefix.split(/\s+/).filter(Boolean);
+
+    // Cut everything from the Diện tích (area) token to the end.
+    const areaS = area != null ? String(area) : null;
+    let cut = -1;
+    if (areaS) {
+      for (let i = toks.length - 1; i >= 0; i--) {
+        if (toks[i] === areaS) { cut = i; break; }
+      }
+    }
+    if (cut >= 0) {
+      toks = toks.slice(0, cut);
+    } else {
+      const floorS = floor != null ? String(floor) : null;
+      while (toks.length > 1) {
+        const t = toks[toks.length - 1];
+        if (
+          /^[0-9]+(?:[.,/][0-9]+)*$/.test(t) ||
+          /^C\d+$/i.test(t) ||
+          /^(Đất|đất|CC|NH)$/u.test(t) ||
+          (floorS && t === floorS)
+        ) {
+          toks.pop();
+        } else break;
+      }
+    }
+  } else {
+    return src || null;
+  }
+
+  // Drop a single leading house-number token ("XXX", "161.3.2", "85/100", "426")
+  // so the detailed house number stays hidden for posting.
+  if (toks.length > 1 && /^[0-9Xx]+(?:[.,/\-][0-9A-Za-z]+)*$/u.test(toks[0])) {
+    toks.shift();
+  }
+
+  const out = toks.join(" ").trim();
+  return out || src || null;
+}
+
 function structureSummary(a?: SourceRecord["additional"]): string {
   if (!a) return "";
   const parts: string[] = [];
@@ -57,8 +123,11 @@ export function mapRecord(r: SourceRecord, loc: LocationIndex): NewListing {
     provinceName: names.province ?? null,
     districtName: names.district ?? null,
     wardName: names.ward ?? null,
-    street: r.location?.street ?? null,
-    houseNumber: r.location?.number ?? null,
+    street: cleanStreet(r.location?.street, r.title, r.area, r.additional?.floor),
+    houseNumber:
+      r.location?.number && r.location.number !== "NaN"
+        ? r.location.number
+        : null,
     addressExtra: r.location?.address ?? null,
 
     priceValue: r.price?.value ?? null,
