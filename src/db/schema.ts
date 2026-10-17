@@ -36,7 +36,8 @@ export const listings = pgTable("listings", {
 
   // specs
   area: real("area"),
-  front: real("front"), // mặt tiền / chiều ngang
+  front: real("front"), // chiều ngang (số, để lọc/sắp xếp)
+  frontLabel: text("front_label"), // chiều ngang hiển thị (vd "120/155")
   lengthM: real("length_m"), // chiều dài (tách từ tiêu đề)
   floor: integer("floor"),
   room: integer("room"),

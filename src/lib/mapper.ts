@@ -5,20 +5,29 @@ import type { NewListing } from "@/db/schema";
 /**
  * Title syntax from the source:
  *   (Địa chỉ) (Diện tích) (Tầng) (Ngang) (Dài) (Giá) tỷ (Phường) (Quận) ...
- * The length (dài) is the number immediately before the price. We anchor on
- * the price (the number right before "tỷ"/"tỉ") and take the number before it.
- * Returns the parsed length, or null when the title does not match.
+ * We anchor on the price (number right before "tỷ"/"tỉ") and read the two
+ * numbers before it: Ngang (may be a "120/155" form) then Dài. The source's
+ * structured `front` field is unreliable (often 1), so the title wins.
  */
-export function parseLength(title?: string | null): number | null {
-  if (!title) return null;
-  // <length> <price> tỷ|tỉ  (length is the number just before the price)
+export function parseDims(title?: string | null): {
+  widthLabel?: string;
+  widthNum?: number;
+  lengthM?: number;
+} {
+  if (!title) return {};
+  // <ngang> <dài> <giá> tỷ|tỉ   (ngang may contain a slash: 120/155)
   const m = title.match(
-    /([0-9]+(?:[.,][0-9]+)?)\s+[0-9]+(?:[.,][0-9]+)?\s*[Tt][ỷỉ]/u
+    /([0-9]+(?:[.,/][0-9]+)*)\s+([0-9]+(?:[.,][0-9]+)?)\s+[0-9]+(?:[.,][0-9]+)?\s*[Tt][ỷỉ]/u
   );
-  if (!m) return null;
-  const n = parseFloat(m[1].replace(",", "."));
-  if (!Number.isFinite(n) || n <= 0 || n > 1000) return null;
-  return n;
+  if (!m) return {};
+  const out: { widthLabel?: string; widthNum?: number; lengthM?: number } = {};
+  const widthLabel = m[1];
+  const len = parseFloat(m[2].replace(",", "."));
+  const widthNum = parseFloat(widthLabel.split("/")[0].replace(",", "."));
+  if (widthLabel) out.widthLabel = widthLabel;
+  if (Number.isFinite(widthNum) && widthNum > 0 && widthNum <= 1000) out.widthNum = widthNum;
+  if (Number.isFinite(len) && len > 0 && len <= 1000) out.lengthM = len;
+  return out;
 }
 
 function structureSummary(a?: SourceRecord["additional"]): string {
@@ -36,6 +45,7 @@ export function mapRecord(r: SourceRecord, loc: LocationIndex): NewListing {
     r.location?.district,
     r.location?.ward
   );
+  const dims = parseDims(r.title);
   return {
     id: r.id,
     title: r.title ?? null,
@@ -56,8 +66,12 @@ export function mapRecord(r: SourceRecord, loc: LocationIndex): NewListing {
     priceAbsolute: r.price?.absolute ?? null,
 
     area: r.area ?? null,
-    front: r.additional?.front ?? null,
-    lengthM: parseLength(r.title),
+    // Ngang & dài parsed from the title (source's structured `front` is unreliable).
+    front: dims.widthNum ?? r.additional?.front ?? null,
+    frontLabel:
+      dims.widthLabel ??
+      (r.additional?.front != null ? String(r.additional.front) : null),
+    lengthM: dims.lengthM ?? null,
     floor: r.additional?.floor ?? null,
     room: r.additional?.room ?? null,
     toilet: r.additional?.toilet ?? null,

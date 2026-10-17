@@ -336,7 +336,7 @@ export function DashboardClient({ fullName }: { fullName: string }) {
                   </TableCell>
                   <TableCell className="text-right font-medium">{r.area ?? "—"}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">
-                    {r.front != null ? r.front : "—"}
+                    {r.frontLabel ?? (r.front != null ? r.front : "—")}
                     {r.lengthM != null ? ` × ${r.lengthM}` : ""}
                   </TableCell>
                   <TableCell className="text-sm">{r.structure || "—"}</TableCell>

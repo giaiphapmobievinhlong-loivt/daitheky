@@ -5,7 +5,8 @@ const CONTACT_LINE =
 
 export type PostInput = {
   floor?: number | null;
-  front?: number | null; // ngang (mặt tiền)
+  front?: number | null; // ngang (số)
+  frontLabel?: string | null; // ngang hiển thị (vd "120/155")
   lengthM?: number | null; // dài
   area?: number | null;
   structure?: string | null;
@@ -24,9 +25,10 @@ export type PostInput = {
 export function buildPost(l: PostInput): string {
   const lines: string[] = [];
 
+  const ngangHead = l.frontLabel ?? (l.front && l.front > 0 ? String(l.front) : null);
   const headlineBits: string[] = [];
   if (l.floor && l.floor > 0) headlineBits.push(`NHÀ ${l.floor} TẦNG`);
-  if (l.front && l.front > 0) headlineBits.push(`NGANG ${l.front}M`);
+  if (ngangHead) headlineBits.push(`NGANG ${ngangHead}M`);
   headlineBits.push(`GIÁ ${formatPrice(l)}`);
   if (l.districtName) headlineBits.push(l.districtName.toUpperCase());
   lines.push(`🏡🔥 ${headlineBits.join(" – ")} 🔥🏡`);
@@ -35,12 +37,13 @@ export function buildPost(l: PostInput): string {
   const addr = publicAddress(l);
   if (addr) lines.push(`📍 Địa chỉ: ${addr}`);
 
+  const ngang = l.frontLabel ?? (l.front != null && l.front > 0 ? String(l.front) : null);
   const specs: string[] = [];
   if (l.area != null) specs.push(`Diện tích: ${l.area}m²`);
-  if (l.front != null && l.front > 0 && l.lengthM != null && l.lengthM > 0) {
-    specs.push(`Kích thước: ${l.front}m x ${l.lengthM}m (ngang x dài)`);
-  } else if (l.front != null && l.front > 0) {
-    specs.push(`Ngang: ${l.front}m`);
+  if (ngang && l.lengthM != null && l.lengthM > 0) {
+    specs.push(`Kích thước: ${ngang}m x ${l.lengthM}m (ngang x dài)`);
+  } else if (ngang) {
+    specs.push(`Ngang: ${ngang}m`);
   } else if (l.lengthM != null && l.lengthM > 0) {
     specs.push(`Dài: ${l.lengthM}m`);
   }
