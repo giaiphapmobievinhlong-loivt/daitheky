@@ -32,6 +32,18 @@ import {
 
 const ALL = "__all__";
 
+// Source timestamps are unix seconds; show dd/mm/yyyy.
+function formatDate(...ts: (number | null | undefined)[]): string {
+  const t = ts.find((x) => x != null && x > 0);
+  if (!t) return "—";
+  const d = new Date(t * 1000);
+  return d.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
 export function DashboardClient({ fullName }: { fullName: string }) {
   const router = useRouter();
 
@@ -309,6 +321,7 @@ export function DashboardClient({ fullName }: { fullName: string }) {
               <TableHead className="text-right">Ngang × Dài</TableHead>
               <TableHead>Kết cấu</TableHead>
               <TableHead className="text-right">Giá</TableHead>
+              <TableHead className="text-right whitespace-nowrap">Ngày</TableHead>
               <TableHead className="text-center">Khảo sát</TableHead>
               <TableHead className="text-right">Thao tác</TableHead>
             </TableRow>
@@ -316,13 +329,13 @@ export function DashboardClient({ fullName }: { fullName: string }) {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center">
+                <TableCell colSpan={10} className="h-24 text-center">
                   <Loader2 className="mx-auto animate-spin" />
                 </TableCell>
               </TableRow>
             ) : rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={10} className="h-24 text-center text-muted-foreground">
                   Chưa có dữ liệu. Bấm “Đồng bộ dữ liệu” để tải từ hệ thống.
                 </TableCell>
               </TableRow>
@@ -350,6 +363,9 @@ export function DashboardClient({ fullName }: { fullName: string }) {
                   </TableCell>
                   <TableCell className="text-sm">{r.structure || "—"}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">{formatPrice(r)}</TableCell>
+                  <TableCell className="text-right whitespace-nowrap text-sm text-muted-foreground">
+                    {formatDate(r.sourcePublished, r.sourceModified, r.sourceCreated)}
+                  </TableCell>
                   <TableCell className="text-center">
                     {r.surveyed ? (
                       <Badge variant="success" className="gap-1">

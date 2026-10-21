@@ -24,7 +24,9 @@ export type ListingDTO = {
   surveyed: boolean;
   surveyNote: string | null;
   surveyPhotos: string[] | null;
+  sourceCreated: number | null;
   sourceModified: number | null;
+  sourcePublished: number | null;
 };
 
 export type FiltersData = {
