@@ -123,6 +123,11 @@ export function DashboardClient({ fullName }: { fullName: string }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ offset, pageSize: 100 }),
         });
+        if (res.status === 401) {
+          toast.error("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại");
+          router.replace("/login");
+          return;
+        }
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || "Đồng bộ thất bại");
         grand += json.fetched;

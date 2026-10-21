@@ -13,6 +13,21 @@ export type SourceLoginResult = {
   user: Record<string, unknown>;
 };
 
+/** Thrown when the source rejects our token (expired / device bumped). */
+export class SourceAuthError extends Error {
+  constructor(message = "Phiên nguồn đã hết hạn, vui lòng đăng nhập lại") {
+    super(message);
+    this.name = "SourceAuthError";
+  }
+}
+
+function isAuthFailure(status: number, json: unknown): boolean {
+  if (status === 401 || status === 403) return true;
+  const code = (json as { code?: number } | null)?.code;
+  const msg = (json as { message?: string } | null)?.message ?? "";
+  return code === 401 || code === 403 || /jwt|unauthor|token/i.test(msg);
+}
+
 function headers(token?: string): HeadersInit {
   const h: Record<string, string> = {
     "Content-Type": "application/json",
@@ -98,6 +113,7 @@ export async function sourceSearch(
   });
   const json = await res.json().catch(() => ({}));
   if (!json?.success) {
+    if (isAuthFailure(res.status, json)) throw new SourceAuthError();
     throw new Error(json?.message || "Không tải được dữ liệu từ nguồn");
   }
   return { data: json.detail?.data ?? [], total: json.detail?.total ?? 0 };
@@ -120,6 +136,7 @@ export async function sourceLocal(token: string): Promise<Province[]> {
     headers: headers(token),
   });
   const json = await res.json().catch(() => ({}));
+  if (isAuthFailure(res.status, json) && !json?.detail) throw new SourceAuthError();
   if (!json?.detail) return [];
   return json.detail as Province[];
 }

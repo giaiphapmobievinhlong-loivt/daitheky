@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { sourceSearch, sourceLocal } from "@/lib/source-api";
+import { sourceSearch, sourceLocal, SourceAuthError } from "@/lib/source-api";
 import { buildLocationIndex } from "@/lib/location";
 import { mapRecord } from "@/lib/mapper";
 import { db } from "@/db";
@@ -96,6 +96,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, fetched, nextOffset, total, done });
   } catch (e) {
+    if (e instanceof SourceAuthError) {
+      return NextResponse.json({ error: e.message, reauth: true }, { status: 401 });
+    }
     return NextResponse.json(
       { error: e instanceof Error ? e.message : "Đồng bộ thất bại" },
       { status: 500 }
