@@ -125,7 +125,11 @@ export function DashboardClient({ fullName }: { fullName: string }) {
         });
         if (res.status === 401) {
           toast.error("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại");
+          // Clear the (now-stale) app session so /login shows the form
+          // instead of bouncing back to the dashboard.
+          await fetch("/api/auth/logout", { method: "POST" });
           router.replace("/login");
+          router.refresh();
           return;
         }
         const json = await res.json();
