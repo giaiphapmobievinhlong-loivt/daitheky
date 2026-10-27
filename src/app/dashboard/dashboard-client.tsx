@@ -270,16 +270,16 @@ export function DashboardClient({ fullName }: { fullName: string }) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[70px]">Ảnh</TableHead>
-              <TableHead>Tiêu đề</TableHead>
-              <TableHead>Địa chỉ</TableHead>
-              <TableHead className="text-right">DT (m²)</TableHead>
-              <TableHead className="text-right">Ngang × Dài</TableHead>
-              <TableHead>Kết cấu</TableHead>
-              <TableHead className="text-right">Giá</TableHead>
-              <TableHead className="text-right whitespace-nowrap">Ngày</TableHead>
-              <TableHead className="text-center">Khảo sát</TableHead>
-              <TableHead className="text-right">Thao tác</TableHead>
+              <TableHead className="w-[56px]">Ảnh</TableHead>
+              <TableHead className="min-w-[320px]">Tiêu đề</TableHead>
+              <TableHead className="min-w-[200px]">Địa chỉ</TableHead>
+              <TableHead className="text-right w-[1%] whitespace-nowrap">DT (m²)</TableHead>
+              <TableHead className="text-right w-[1%] whitespace-nowrap">Ngang × Dài</TableHead>
+              <TableHead className="w-[1%] whitespace-nowrap">Kết cấu</TableHead>
+              <TableHead className="text-right w-[1%] whitespace-nowrap">Giá</TableHead>
+              <TableHead className="text-right w-[1%] whitespace-nowrap">Ngày</TableHead>
+              <TableHead className="text-center w-[1%] whitespace-nowrap">Khảo sát</TableHead>
+              <TableHead className="text-right w-[1%] whitespace-nowrap">Thao tác</TableHead>
             </TableRow>
             {/* Per-column filter row */}
             <TableRow className="hover:bg-transparent align-top">
@@ -425,18 +425,18 @@ export function DashboardClient({ fullName }: { fullName: string }) {
                       <div className="h-12 w-12 rounded bg-muted" />
                     )}
                   </TableCell>
-                  <TableCell className="max-w-[260px]">
+                  <TableCell className="min-w-[320px] max-w-[460px]">
                     <div className="line-clamp-2 text-sm font-medium">{r.title}</div>
                   </TableCell>
-                  <TableCell className="max-w-[200px] text-sm">
+                  <TableCell className="min-w-[200px] max-w-[300px] text-sm">
                     {publicAddress(r) || "—"}
                   </TableCell>
-                  <TableCell className="text-right font-medium">{r.area ?? "—"}</TableCell>
+                  <TableCell className="text-right font-medium whitespace-nowrap">{r.area ?? "—"}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">
                     {r.frontLabel ?? (r.front != null ? r.front : "—")}
                     {r.lengthM != null ? ` × ${r.lengthM}` : ""}
                   </TableCell>
-                  <TableCell className="text-sm">{r.structure || "—"}</TableCell>
+                  <TableCell className="text-sm whitespace-nowrap">{r.structure || "—"}</TableCell>
                   <TableCell className="text-right whitespace-nowrap">{formatPrice(r)}</TableCell>
                   <TableCell className="text-right whitespace-nowrap text-sm text-muted-foreground">
                     {formatDate(r.sourcePublished, r.sourceModified, r.sourceCreated)}
