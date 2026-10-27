@@ -53,17 +53,39 @@ export function DashboardClient({ fullName }: { fullName: string }) {
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
-  // filters
+  // per-column filters
   const [keyword, setKeyword] = useState("");
-  const [district, setDistrict] = useState(ALL);
-  const [ward, setWard] = useState(ALL);
-  const [minFront, setMinFront] = useState("");
-  const [floors, setFloors] = useState(ALL);
-  const [surveyed, setSurveyed] = useState(ALL);
+  const [fTitle, setFTitle] = useState("");
+  const [fAddress, setFAddress] = useState("");
+  const [fMinArea, setFMinArea] = useState("");
+  const [fMaxArea, setFMaxArea] = useState("");
+  const [fMinFront, setFMinFront] = useState("");
+  const [fFloors, setFFloors] = useState(ALL);
+  const [fMinPrice, setFMinPrice] = useState("");
+  const [fMaxPrice, setFMaxPrice] = useState("");
+  const [fDateFrom, setFDateFrom] = useState("");
+  const [fDateTo, setFDateTo] = useState("");
+  const [fSurveyed, setFSurveyed] = useState(ALL);
   const [sortBy, setSortBy] = useState("area");
   const [sortDir, setSortDir] = useState("desc");
 
   const [filtersData, setFiltersData] = useState<FiltersData>({ districts: [], floors: [] });
+
+  function resetFilters() {
+    setKeyword("");
+    setFTitle("");
+    setFAddress("");
+    setFMinArea("");
+    setFMaxArea("");
+    setFMinFront("");
+    setFFloors(ALL);
+    setFMinPrice("");
+    setFMaxPrice("");
+    setFDateFrom("");
+    setFDateTo("");
+    setFSurveyed(ALL);
+    setPage(1);
+  }
 
   // sync
   const [syncing, setSyncing] = useState(false);
@@ -72,11 +94,6 @@ export function DashboardClient({ fullName }: { fullName: string }) {
   // dialogs
   const [postItem, setPostItem] = useState<ListingDTO | null>(null);
   const [surveyItem, setSurveyItem] = useState<ListingDTO | null>(null);
-
-  const wardOptions = useMemo(() => {
-    if (district === ALL) return [];
-    return filtersData.districts.find((d) => d.district === district)?.wards ?? [];
-  }, [district, filtersData]);
 
   const loadFilters = useCallback(async () => {
     const res = await fetch("/api/filters");
@@ -93,11 +110,17 @@ export function DashboardClient({ fullName }: { fullName: string }) {
         sortDir,
       });
       if (keyword.trim()) params.set("keyword", keyword.trim());
-      if (district !== ALL) params.set("district", district);
-      if (ward !== ALL) params.set("ward", ward);
-      if (minFront) params.set("minFront", minFront);
-      if (floors !== ALL) params.set("floors", floors);
-      if (surveyed !== ALL) params.set("surveyed", surveyed === "yes" ? "yes" : "no");
+      if (fTitle.trim()) params.set("title", fTitle.trim());
+      if (fAddress.trim()) params.set("address", fAddress.trim());
+      if (fMinArea) params.set("minArea", fMinArea);
+      if (fMaxArea) params.set("maxArea", fMaxArea);
+      if (fMinFront) params.set("minFront", fMinFront);
+      if (fFloors !== ALL) params.set("floors", fFloors);
+      if (fMinPrice) params.set("minPrice", fMinPrice);
+      if (fMaxPrice) params.set("maxPrice", fMaxPrice);
+      if (fDateFrom) params.set("dateFrom", fDateFrom);
+      if (fDateTo) params.set("dateTo", fDateTo);
+      if (fSurveyed !== ALL) params.set("surveyed", fSurveyed === "yes" ? "yes" : "no");
 
       const res = await fetch(`/api/listings?${params.toString()}`);
       if (res.status === 401) {
@@ -110,14 +133,19 @@ export function DashboardClient({ fullName }: { fullName: string }) {
     } finally {
       setLoading(false);
     }
-  }, [page, sortBy, sortDir, keyword, district, ward, minFront, floors, surveyed, router]);
+  }, [
+    page, sortBy, sortDir, keyword, fTitle, fAddress, fMinArea, fMaxArea,
+    fMinFront, fFloors, fMinPrice, fMaxPrice, fDateFrom, fDateTo, fSurveyed, router,
+  ]);
 
   useEffect(() => {
     loadFilters();
   }, [loadFilters]);
 
+  // Debounced load so typing in column filters does not fire a request per keystroke.
   useEffect(() => {
-    load();
+    const t = setTimeout(() => load(), 350);
+    return () => clearTimeout(t);
   }, [load]);
 
   async function runSync() {
@@ -170,10 +198,6 @@ export function DashboardClient({ fullName }: { fullName: string }) {
 
   const totalPages = Math.max(Math.ceil(total / pageSize), 1);
 
-  function resetToFirstPage() {
-    setPage(1);
-  }
-
   return (
     <div className="container py-6 space-y-4">
       {/* Header */}
@@ -196,9 +220,9 @@ export function DashboardClient({ fullName }: { fullName: string }) {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="grid gap-2 rounded-lg border bg-card p-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="relative sm:col-span-2 lg:col-span-1">
+      {/* Top bar: global search + sort + reset */}
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-card p-3">
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             type="search"
@@ -208,105 +232,37 @@ export function DashboardClient({ fullName }: { fullName: string }) {
             autoCapitalize="off"
             spellCheck={false}
             className="pl-8"
-            placeholder="Tìm tiêu đề, đường..."
+            placeholder="Tìm nhanh (tiêu đề, mô tả, đường)..."
             value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") resetToFirstPage();
+            onChange={(e) => {
+              setKeyword(e.target.value);
+              setPage(1);
             }}
           />
         </div>
-
-        <Combobox
-          value={district}
-          onChange={(v) => {
-            setDistrict(v);
-            setWard(ALL);
-            resetToFirstPage();
-          }}
-          placeholder="Tất cả quận"
-          searchPlaceholder="Tìm quận..."
-          emptyText="Không tìm thấy quận"
-          options={[
-            { value: ALL, label: "Tất cả quận" },
-            ...filtersData.districts.map((d) => ({ value: d.district, label: d.district })),
-          ]}
-        />
-
-        <Combobox
-          value={ward}
-          onChange={(v) => {
-            setWard(v);
-            resetToFirstPage();
-          }}
-          disabled={district === ALL}
-          placeholder="Tất cả phường"
-          searchPlaceholder="Tìm phường..."
-          emptyText="Không tìm thấy phường"
-          options={[
-            { value: ALL, label: "Tất cả phường" },
-            ...wardOptions.map((w) => ({ value: w, label: w })),
-          ]}
-        />
-
-        <Input
-          type="number"
-          autoComplete="off"
-          placeholder="Đường trước nhà ≥ (m)"
-          value={minFront}
-          onChange={(e) => setMinFront(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") resetToFirstPage();
-          }}
-        />
-
-        <Combobox
-          value={floors}
-          onChange={(v) => { setFloors(v); resetToFirstPage(); }}
-          placeholder="Mọi số tầng"
-          searchPlaceholder="Tìm số tầng..."
-          emptyText="Không có"
-          options={[
-            { value: ALL, label: "Kết cấu: mọi số tầng" },
-            ...filtersData.floors.map((f) => ({ value: String(f), label: `${f} tầng` })),
-          ]}
-        />
-
-        <Combobox
-          value={surveyed}
-          onChange={(v) => { setSurveyed(v); resetToFirstPage(); }}
-          placeholder="Khảo sát"
-          searchPlaceholder="Tìm..."
-          options={[
-            { value: ALL, label: "Mọi trạng thái" },
-            { value: "yes", label: "Đã khảo sát" },
-            { value: "no", label: "Chưa khảo sát" },
-          ]}
-        />
-
-        <Combobox
-          value={`${sortBy}:${sortDir}`}
-          onChange={(v) => {
-            const [b, d] = v.split(":");
-            setSortBy(b);
-            setSortDir(d);
-            resetToFirstPage();
-          }}
-          placeholder="Sắp xếp"
-          searchPlaceholder="Tìm cách sắp xếp..."
-          options={[
-            { value: "area:desc", label: "Diện tích giảm dần" },
-            { value: "area:asc", label: "Diện tích tăng dần" },
-            { value: "front:desc", label: "Mặt tiền giảm dần" },
-            { value: "price:asc", label: "Giá tăng dần" },
-            { value: "price:desc", label: "Giá giảm dần" },
-            { value: "modified:desc", label: "Mới cập nhật" },
-          ]}
-        />
-
-        <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={resetToFirstPage}>Lọc</Button>
+        <div className="w-56">
+          <Combobox
+            value={`${sortBy}:${sortDir}`}
+            onChange={(v) => {
+              const [b, d] = v.split(":");
+              setSortBy(b);
+              setSortDir(d);
+              setPage(1);
+            }}
+            placeholder="Sắp xếp"
+            searchPlaceholder="Tìm cách sắp xếp..."
+            options={[
+              { value: "area:desc", label: "Diện tích giảm dần" },
+              { value: "area:asc", label: "Diện tích tăng dần" },
+              { value: "front:desc", label: "Ngang giảm dần" },
+              { value: "price:asc", label: "Giá tăng dần" },
+              { value: "price:desc", label: "Giá giảm dần" },
+              { value: "date:desc", label: "Ngày mới nhất" },
+              { value: "modified:desc", label: "Mới cập nhật" },
+            ]}
+          />
         </div>
+        <Button variant="outline" onClick={resetFilters}>Xoá lọc</Button>
       </div>
 
       {/* Table */}
@@ -324,6 +280,125 @@ export function DashboardClient({ fullName }: { fullName: string }) {
               <TableHead className="text-right whitespace-nowrap">Ngày</TableHead>
               <TableHead className="text-center">Khảo sát</TableHead>
               <TableHead className="text-right">Thao tác</TableHead>
+            </TableRow>
+            {/* Per-column filter row */}
+            <TableRow className="hover:bg-transparent align-top">
+              <TableHead className="p-1"></TableHead>
+              <TableHead className="p-1">
+                <Input
+                  className="h-8"
+                  placeholder="Lọc tiêu đề"
+                  autoComplete="off"
+                  value={fTitle}
+                  onChange={(e) => { setFTitle(e.target.value); setPage(1); }}
+                />
+              </TableHead>
+              <TableHead className="p-1">
+                <Input
+                  className="h-8"
+                  placeholder="Đường / phường / quận"
+                  autoComplete="off"
+                  value={fAddress}
+                  onChange={(e) => { setFAddress(e.target.value); setPage(1); }}
+                />
+              </TableHead>
+              <TableHead className="p-1">
+                <div className="flex gap-1">
+                  <Input
+                    className="h-8 w-16 text-right"
+                    type="number"
+                    placeholder="từ"
+                    autoComplete="off"
+                    value={fMinArea}
+                    onChange={(e) => { setFMinArea(e.target.value); setPage(1); }}
+                  />
+                  <Input
+                    className="h-8 w-16 text-right"
+                    type="number"
+                    placeholder="đến"
+                    autoComplete="off"
+                    value={fMaxArea}
+                    onChange={(e) => { setFMaxArea(e.target.value); setPage(1); }}
+                  />
+                </div>
+              </TableHead>
+              <TableHead className="p-1">
+                <Input
+                  className="h-8 w-20 text-right"
+                  type="number"
+                  placeholder="ngang ≥"
+                  autoComplete="off"
+                  value={fMinFront}
+                  onChange={(e) => { setFMinFront(e.target.value); setPage(1); }}
+                />
+              </TableHead>
+              <TableHead className="p-1">
+                <Combobox
+                  className="h-8"
+                  value={fFloors}
+                  onChange={(v) => { setFFloors(v); setPage(1); }}
+                  placeholder="Số tầng"
+                  searchPlaceholder="Tìm..."
+                  emptyText="Không có"
+                  options={[
+                    { value: ALL, label: "Mọi số tầng" },
+                    ...filtersData.floors.map((f) => ({ value: String(f), label: `${f} tầng` })),
+                  ]}
+                />
+              </TableHead>
+              <TableHead className="p-1">
+                <div className="flex gap-1">
+                  <Input
+                    className="h-8 w-16 text-right"
+                    type="number"
+                    placeholder="từ"
+                    autoComplete="off"
+                    value={fMinPrice}
+                    onChange={(e) => { setFMinPrice(e.target.value); setPage(1); }}
+                  />
+                  <Input
+                    className="h-8 w-16 text-right"
+                    type="number"
+                    placeholder="đến"
+                    autoComplete="off"
+                    value={fMaxPrice}
+                    onChange={(e) => { setFMaxPrice(e.target.value); setPage(1); }}
+                  />
+                </div>
+              </TableHead>
+              <TableHead className="p-1">
+                <div className="flex flex-col gap-1">
+                  <Input
+                    className="h-8"
+                    type="date"
+                    autoComplete="off"
+                    value={fDateFrom}
+                    onChange={(e) => { setFDateFrom(e.target.value); setPage(1); }}
+                  />
+                  <Input
+                    className="h-8"
+                    type="date"
+                    autoComplete="off"
+                    value={fDateTo}
+                    onChange={(e) => { setFDateTo(e.target.value); setPage(1); }}
+                  />
+                </div>
+              </TableHead>
+              <TableHead className="p-1">
+                <Combobox
+                  className="h-8"
+                  value={fSurveyed}
+                  onChange={(v) => { setFSurveyed(v); setPage(1); }}
+                  placeholder="Tất cả"
+                  searchPlaceholder="Tìm..."
+                  options={[
+                    { value: ALL, label: "Tất cả" },
+                    { value: "yes", label: "Đã KS" },
+                    { value: "no", label: "Chưa KS" },
+                  ]}
+                />
+              </TableHead>
+              <TableHead className="p-1"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

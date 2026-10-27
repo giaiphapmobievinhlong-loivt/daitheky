@@ -14,13 +14,32 @@ export async function GET(req: Request) {
   const page = Math.max(parseInt(q.get("page") ?? "1", 10) || 1, 1);
   const pageSize = Math.min(Math.max(parseInt(q.get("pageSize") ?? "20", 10) || 20, 1), 100);
   const keyword = (q.get("keyword") ?? "").trim();
+  const title = (q.get("title") ?? "").trim();
+  const address = (q.get("address") ?? "").trim();
   const district = q.get("district") ?? "";
   const ward = q.get("ward") ?? "";
   const surveyed = q.get("surveyed") ?? ""; // "", "yes", "no"
-  const minFront = parseFloat(q.get("minFront") ?? "");
   const floors = q.get("floors") ?? ""; // exact floor count
-  const sortBy = q.get("sortBy") ?? "area"; // area | front | price | modified
+  const sortBy = q.get("sortBy") ?? "area"; // area | front | price | modified | date
   const sortDir = q.get("sortDir") ?? "desc"; // asc | desc
+
+  const num = (k: string) => {
+    const v = parseFloat(q.get(k) ?? "");
+    return Number.isNaN(v) ? null : v;
+  };
+  const minArea = num("minArea");
+  const maxArea = num("maxArea");
+  const minFront = num("minFront");
+  const minPrice = num("minPrice");
+  const maxPrice = num("maxPrice");
+  // date range in unix seconds (from yyyy-mm-dd)
+  const dateFrom = q.get("dateFrom")
+    ? Math.floor(new Date(q.get("dateFrom")!).getTime() / 1000)
+    : null;
+  const dateTo = q.get("dateTo")
+    ? Math.floor(new Date(q.get("dateTo")!).getTime() / 1000) + 86399
+    : null;
+  const dateExpr = sql`coalesce(${listings.sourcePublished}, ${listings.sourceModified}, ${listings.sourceCreated})`;
 
   const conds: SQL[] = [];
   if (keyword) {
@@ -33,11 +52,28 @@ export async function GET(req: Request) {
       )!
     );
   }
+  if (title) conds.push(ilike(listings.title, `%${title}%`));
+  if (address) {
+    const like = `%${address}%`;
+    conds.push(
+      or(
+        ilike(listings.street, like),
+        ilike(listings.wardName, like),
+        ilike(listings.districtName, like)
+      )!
+    );
+  }
   if (district) conds.push(eq(listings.districtName, district));
   if (ward) conds.push(eq(listings.wardName, ward));
   if (surveyed === "yes") conds.push(eq(listings.surveyed, true));
   if (surveyed === "no") conds.push(eq(listings.surveyed, false));
-  if (!Number.isNaN(minFront)) conds.push(sql`${listings.front} >= ${minFront}`);
+  if (minArea != null) conds.push(sql`${listings.area} >= ${minArea}`);
+  if (maxArea != null) conds.push(sql`${listings.area} <= ${maxArea}`);
+  if (minFront != null) conds.push(sql`${listings.front} >= ${minFront}`);
+  if (minPrice != null) conds.push(sql`${listings.priceValue} >= ${minPrice}`);
+  if (maxPrice != null) conds.push(sql`${listings.priceValue} <= ${maxPrice}`);
+  if (dateFrom != null) conds.push(sql`${dateExpr} >= ${dateFrom}`);
+  if (dateTo != null) conds.push(sql`${dateExpr} <= ${dateTo}`);
   if (floors) {
     const f = parseInt(floors, 10);
     if (!Number.isNaN(f)) conds.push(eq(listings.floor, f));
@@ -52,6 +88,8 @@ export async function GET(req: Request) {
       ? listings.priceValue
       : sortBy === "modified"
       ? listings.sourceModified
+      : sortBy === "date"
+      ? (dateExpr as unknown as typeof listings.area)
       : listings.area;
   const orderBy = sortDir === "asc" ? asc(sortCol) : desc(sortCol);
 
