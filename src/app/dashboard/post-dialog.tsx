@@ -98,10 +98,10 @@ export function PostDialog({
             </Button>
           ))}
         </div>
-        <p className="text-xs text-muted-foreground">
-          <Badge variant="secondary">Giai đoạn 1</Badge> hiện hỗ trợ sao chép thủ
-          công. Đăng tự động các nền tảng sẽ mở dần.
-        </p>
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          <Badge variant="secondary">Giai đoạn 1</Badge>
+          <span>hiện hỗ trợ sao chép thủ công. Đăng tự động các nền tảng sẽ mở dần.</span>
+        </div>
       </DialogContent>
     </Dialog>
   );
