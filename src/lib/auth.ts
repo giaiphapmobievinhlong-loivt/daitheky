@@ -7,10 +7,21 @@ const secret = new TextEncoder().encode(
 );
 
 export type Session = {
-  username: string;
+  userId: string; // source user id (from JWT `id`)
+  username: string; // phone number
   fullName?: string;
   sourceToken: string;
 };
+
+// Admin allowlist by phone number (username). Comma-separated in env; owner default.
+const ADMIN_PHONES = (process.env.ADMIN_PHONES ?? "0379386629")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+export function isAdminUsername(username?: string): boolean {
+  return !!username && ADMIN_PHONES.includes(username);
+}
 
 export async function createSession(data: Session) {
   const token = await new SignJWT({ ...data })
@@ -36,6 +47,7 @@ export async function getSession(): Promise<Session | null> {
   try {
     const { payload } = await jwtVerify(token, secret);
     return {
+      userId: (payload.userId as string) ?? (payload.username as string),
       username: payload.username as string,
       fullName: payload.fullName as string | undefined,
       sourceToken: payload.sourceToken as string,

@@ -13,6 +13,19 @@ export type SourceLoginResult = {
   user: Record<string, unknown>;
 };
 
+/** Decode the payload of the source JWT (no verification; just to read id/username). */
+export function decodeSourceJwt(token: string): Record<string, unknown> {
+  try {
+    const part = token.split(".")[1];
+    const b64 = part.replace(/-/g, "+").replace(/_/g, "/");
+    const pad = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+    const json = Buffer.from(pad, "base64").toString("utf8");
+    return JSON.parse(json);
+  } catch {
+    return {};
+  }
+}
+
 /** Thrown when the source rejects our token (expired / device bumped). */
 export class SourceAuthError extends Error {
   constructor(message = "Phiên nguồn đã hết hạn, vui lòng đăng nhập lại") {

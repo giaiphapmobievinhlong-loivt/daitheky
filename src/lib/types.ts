@@ -24,6 +24,15 @@ export type ListingDTO = {
   surveyed: boolean;
   surveyNote: string | null;
   surveyPhotos: string[] | null;
+  surveyList?: {
+    userId: string;
+    username: string | null;
+    fullName: string | null;
+    surveyed: boolean;
+    note: string | null;
+    photos: string[];
+    surveyedAt: string | null;
+  }[];
   sourceCreated: number | null;
   sourceModified: number | null;
   sourcePublished: number | null;

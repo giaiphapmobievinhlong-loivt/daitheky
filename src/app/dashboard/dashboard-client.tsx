@@ -44,7 +44,13 @@ function formatDate(...ts: (number | null | undefined)[]): string {
   });
 }
 
-export function DashboardClient({ fullName }: { fullName: string }) {
+export function DashboardClient({
+  fullName,
+  isAdmin,
+}: {
+  fullName: string;
+  isAdmin: boolean;
+}) {
   const router = useRouter();
 
   const [rows, setRows] = useState<ListingDTO[]>([]);
@@ -62,6 +68,12 @@ export function DashboardClient({ fullName }: { fullName: string }) {
   const [surveyed, setSurveyed] = useState(ALL);
   const [sortBy, setSortBy] = useState("area");
   const [sortDir, setSortDir] = useState("desc");
+
+  // admin: whose survey to view ("self" = own; "all" = everyone; or a userId)
+  const [viewUser, setViewUser] = useState("self");
+  const [members, setMembers] = useState<
+    { userId: string; username: string | null; fullName: string | null; surveyedCount: number }[]
+  >([]);
 
   const [filtersData, setFiltersData] = useState<FiltersData>({ districts: [], floors: [] });
 
@@ -98,6 +110,7 @@ export function DashboardClient({ fullName }: { fullName: string }) {
       if (minFront) params.set("minFront", minFront);
       if (floors !== ALL) params.set("floors", floors);
       if (surveyed !== ALL) params.set("surveyed", surveyed === "yes" ? "yes" : "no");
+      if (isAdmin && viewUser !== "self") params.set("viewUser", viewUser);
 
       const res = await fetch(`/api/listings?${params.toString()}`);
       if (res.status === 401) {
@@ -110,11 +123,19 @@ export function DashboardClient({ fullName }: { fullName: string }) {
     } finally {
       setLoading(false);
     }
-  }, [page, sortBy, sortDir, keyword, district, ward, minFront, floors, surveyed, router]);
+  }, [page, sortBy, sortDir, keyword, district, ward, minFront, floors, surveyed, viewUser, isAdmin, router]);
 
   useEffect(() => {
     loadFilters();
   }, [loadFilters]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    fetch("/api/members")
+      .then((r) => (r.ok ? r.json() : { members: [] }))
+      .then((j) => setMembers(j.members ?? []))
+      .catch(() => {});
+  }, [isAdmin]);
 
   useEffect(() => {
     load();
@@ -304,6 +325,24 @@ export function DashboardClient({ fullName }: { fullName: string }) {
           ]}
         />
 
+        {isAdmin && (
+          <Combobox
+            value={viewUser}
+            onChange={(v) => { setViewUser(v); resetToFirstPage(); }}
+            placeholder="Xem khảo sát của"
+            searchPlaceholder="Tìm thành viên..."
+            emptyText="Không có thành viên"
+            options={[
+              { value: "self", label: "Khảo sát: của tôi" },
+              { value: "all", label: "Khảo sát: mọi người" },
+              ...members.map((m) => ({
+                value: m.userId,
+                label: `${m.fullName || m.username} (${m.surveyedCount})`,
+              })),
+            ]}
+          />
+        )}
+
         <div className="flex items-center gap-2">
           <Button variant="secondary" onClick={resetToFirstPage}>Lọc</Button>
         </div>
@@ -367,7 +406,17 @@ export function DashboardClient({ fullName }: { fullName: string }) {
                     {formatDate(r.sourcePublished, r.sourceModified, r.sourceCreated)}
                   </TableCell>
                   <TableCell className="text-center">
-                    {r.surveyed ? (
+                    {viewUser === "all" ? (
+                      (r.surveyList?.length ?? 0) > 0 ? (
+                        <Badge variant="success" className="gap-1">
+                          <CheckCircle2 className="h-3 w-3" /> {r.surveyList!.length} người
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="gap-1 text-muted-foreground">
+                          <Circle className="h-3 w-3" /> Chưa
+                        </Badge>
+                      )
+                    ) : r.surveyed ? (
                       <Badge variant="success" className="gap-1">
                         <CheckCircle2 className="h-3 w-3" /> Đã KS
                       </Badge>
@@ -436,6 +485,8 @@ export function DashboardClient({ fullName }: { fullName: string }) {
         open={!!surveyItem}
         onOpenChange={(v) => !v && setSurveyItem(null)}
         onSaved={load}
+        readOnly={viewUser !== "self"}
+        viewAll={viewUser === "all"}
       />
     </div>
   );

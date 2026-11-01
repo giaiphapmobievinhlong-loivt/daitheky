@@ -7,6 +7,7 @@ import {
   timestamp,
   jsonb,
   bigint,
+  index,
 } from "drizzle-orm/pg-core";
 
 /**
@@ -73,3 +74,30 @@ export const listings = pgTable("listings", {
 
 export type Listing = typeof listings.$inferSelect;
 export type NewListing = typeof listings.$inferInsert;
+
+/**
+ * Per-user survey of a listing. Each (listingId, userId) is one person's survey
+ * of that house, independent of other members.
+ */
+export const surveys = pgTable(
+  "surveys",
+  {
+    id: text("id").primaryKey(), // `${listingId}:${userId}`
+    listingId: text("listing_id").notNull(),
+    userId: text("user_id").notNull(),
+    username: text("username"),
+    fullName: text("full_name"),
+    surveyed: boolean("surveyed").notNull().default(false),
+    note: text("note"),
+    photos: jsonb("photos").$type<string[]>().default([]),
+    surveyedAt: timestamp("surveyed_at"),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    byListing: index("surveys_listing_idx").on(t.listingId),
+    byUser: index("surveys_user_idx").on(t.userId),
+  })
+);
+
+export type Survey = typeof surveys.$inferSelect;
+export type NewSurvey = typeof surveys.$inferInsert;

@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getSession } from "@/lib/auth";
 import { db } from "@/db";
-import { listings } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { surveys } from "@/db/schema";
+import { sql } from "drizzle-orm";
 
 const schema = z.object({
   surveyed: z.boolean().optional(),
@@ -24,25 +24,35 @@ export async function PATCH(
     return NextResponse.json({ error: "Dữ liệu không hợp lệ" }, { status: 400 });
   }
 
-  const set: Record<string, unknown> = {};
+  const surveyId = `${id}:${session.userId}`;
+  const now = new Date();
+
+  // Build the row to insert / the fields to update on conflict.
+  const insertRow = {
+    id: surveyId,
+    listingId: id,
+    userId: session.userId,
+    username: session.username,
+    fullName: session.fullName ?? session.username,
+    surveyed: parsed.data.surveyed ?? false,
+    note: parsed.data.surveyNote ?? null,
+    photos: [] as string[],
+    surveyedAt: parsed.data.surveyed ? now : null,
+    updatedAt: now,
+  };
+
+  const updateSet: Record<string, unknown> = { updatedAt: now };
   if (parsed.data.surveyed !== undefined) {
-    set.surveyed = parsed.data.surveyed;
-    set.surveyedAt = parsed.data.surveyed ? new Date() : null;
+    updateSet.surveyed = parsed.data.surveyed;
+    updateSet.surveyedAt = parsed.data.surveyed ? now : null;
   }
-  if (parsed.data.surveyNote !== undefined) set.surveyNote = parsed.data.surveyNote;
+  if (parsed.data.surveyNote !== undefined) updateSet.note = parsed.data.surveyNote;
 
-  if (Object.keys(set).length === 0) {
-    return NextResponse.json({ error: "Không có gì để cập nhật" }, { status: 400 });
-  }
-
-  const updated = await db
-    .update(listings)
-    .set(set)
-    .where(eq(listings.id, id))
+  const rows = await db
+    .insert(surveys)
+    .values(insertRow)
+    .onConflictDoUpdate({ target: surveys.id, set: updateSet })
     .returning();
 
-  if (updated.length === 0) {
-    return NextResponse.json({ error: "Không tìm thấy căn nhà" }, { status: 404 });
-  }
-  return NextResponse.json({ ok: true, listing: updated[0] });
+  return NextResponse.json({ ok: true, survey: rows[0] });
 }

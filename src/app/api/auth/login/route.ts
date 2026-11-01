@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { sourceLogin } from "@/lib/source-api";
+import { sourceLogin, decodeSourceJwt } from "@/lib/source-api";
 import { createSession } from "@/lib/auth";
 
 const schema = z.object({
@@ -21,7 +21,11 @@ export async function POST(req: Request) {
       parsed.data.password,
       parsed.data.sum
     );
+    const jwt = decodeSourceJwt(accessToken);
+    const userId =
+      (jwt.id as string) || (user?.id as string) || parsed.data.username;
     await createSession({
+      userId,
       username: parsed.data.username,
       fullName: (user?.full_name as string) || parsed.data.username,
       sourceToken: accessToken,
