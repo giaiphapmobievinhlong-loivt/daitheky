@@ -55,3 +55,4 @@ Mở http://localhost:3000 → đăng nhập → bấm **Đồng bộ dữ liệ
 Hệ thống nguồn chỉ cho **1 thiết bị/phiên**. Khi app này đăng nhập, phiên trên
 trình duyệt cũ ở `tuan123.daitheky.net` có thể bị đăng xuất, và ngược lại. Token
 phiên có hạn ~2–4 tuần; hết hạn chỉ cần đăng nhập lại trong app.
+# daitheky
