@@ -11,9 +11,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Combobox } from "@/components/ui/combobox";
 import { buildPost } from "@/lib/post-template";
 import type { ListingDTO } from "@/lib/types";
-import { Copy, Download, ExternalLink, Loader2, Rocket } from "lucide-react";
+import { Copy, Download, ExternalLink, Loader2, Rocket, Send } from "lucide-react";
 
 const FB_PROFILE = "https://www.facebook.com/";
 const FB_GROUPS = "https://www.facebook.com/groups/feed/";
@@ -33,7 +34,27 @@ export function PostDialog({
   const [text, setText] = useState(initial);
   const [downloading, setDownloading] = useState(false);
 
+  // Facebook Page (Fanpage) auto-posting
+  const [fbPages, setFbPages] = useState<{ id: string; name: string }[]>([]);
+  const [selectedPage, setSelectedPage] = useState("");
+  const [posting, setPosting] = useState(false);
+
   useEffect(() => setText(initial), [initial]);
+
+  useEffect(() => {
+    if (!open) return;
+    fetch("/api/facebook/status")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (j?.connected && Array.isArray(j.pages)) {
+          setFbPages(j.pages);
+          if (j.pages[0]) setSelectedPage((p) => p || j.pages[0].id);
+        } else {
+          setFbPages([]);
+        }
+      })
+      .catch(() => setFbPages([]));
+  }, [open]);
 
   const images = useMemo(() => {
     if (!listing) return [];
@@ -79,6 +100,28 @@ export function PostDialog({
 
   function openPlatform(url: string) {
     window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  async function postFanpage() {
+    if (!selectedPage) {
+      toast.error("Chọn Trang để đăng");
+      return;
+    }
+    setPosting(true);
+    try {
+      const res = await fetch("/api/facebook/post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pageId: selectedPage, message: text, photoUrls: images }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Đăng thất bại");
+      toast.success("Đã đăng lên Fanpage");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Lỗi đăng Fanpage");
+    } finally {
+      setPosting(false);
+    }
   }
 
   // One-click: copy text, download all images, open Facebook.
@@ -136,13 +179,36 @@ export function PostDialog({
           </Button>
         </div>
 
+        {fbPages.length > 0 && (
+          <div className="space-y-2 rounded-lg border p-3">
+            <div className="text-sm font-medium flex items-center gap-2">
+              <Send className="h-4 w-4" /> Đăng tự động lên Fanpage
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="w-60">
+                <Combobox
+                  value={selectedPage}
+                  onChange={setSelectedPage}
+                  placeholder="Chọn Trang"
+                  searchPlaceholder="Tìm Trang..."
+                  options={fbPages.map((p) => ({ value: p.id, label: p.name }))}
+                />
+              </div>
+              <Button onClick={postFanpage} disabled={posting}>
+                {posting ? <Loader2 className="animate-spin" /> : <Send />}
+                Đăng lên Trang
+              </Button>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-2">
           <div className="text-sm font-medium flex items-center gap-2">
-            <Rocket className="h-4 w-4" /> Đăng lên nền tảng
+            <Rocket className="h-4 w-4" /> Đăng tay (cá nhân / Group / Threads / Zalo)
           </div>
           <div className="flex flex-wrap gap-2">
             {platforms.map((p) => (
-              <Button key={p.key} onClick={() => prepareAndOpen(p.url)}>
+              <Button key={p.key} variant="outline" onClick={() => prepareAndOpen(p.url)}>
                 <ExternalLink /> {p.label}
               </Button>
             ))}

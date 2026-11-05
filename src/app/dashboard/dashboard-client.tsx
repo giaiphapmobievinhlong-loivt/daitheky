@@ -28,6 +28,7 @@ import {
   Search,
   CheckCircle2,
   Circle,
+  Send,
 } from "lucide-react";
 
 const ALL = "__all__";
@@ -68,6 +69,13 @@ export function DashboardClient({
   const [surveyed, setSurveyed] = useState(ALL);
   const [sortBy, setSortBy] = useState("area");
   const [sortDir, setSortDir] = useState("desc");
+
+  // facebook connection
+  const [fb, setFb] = useState<{ connected: boolean; name: string | null; configured: boolean }>({
+    connected: false,
+    name: null,
+    configured: false,
+  });
 
   // admin: whose survey to view ("self" = own; "all" = everyone; or a userId)
   const [viewUser, setViewUser] = useState("self");
@@ -136,6 +144,34 @@ export function DashboardClient({
       .then((j) => setMembers(j.members ?? []))
       .catch(() => {});
   }, [isAdmin]);
+
+  const loadFb = useCallback(() => {
+    fetch("/api/facebook/status")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => j && setFb({ connected: j.connected, name: j.name, configured: j.configured }))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    loadFb();
+    // show result of the OAuth round-trip
+    const p = new URLSearchParams(window.location.search);
+    const s = p.get("fb");
+    if (s) {
+      if (s === "connected") toast.success("Đã kết nối Facebook");
+      else if (s === "notconfigured") toast.error("Facebook chưa được cấu hình (thiếu App ID/Secret)");
+      else if (s === "cancelled") toast.info("Đã huỷ kết nối Facebook");
+      else if (s === "error") toast.error("Kết nối Facebook lỗi: " + (p.get("msg") || ""));
+      else if (s === "badstate") toast.error("Phiên kết nối không hợp lệ, thử lại");
+      window.history.replaceState({}, "", "/dashboard");
+    }
+  }, [loadFb]);
+
+  async function disconnectFb() {
+    await fetch("/api/facebook/disconnect", { method: "POST" });
+    toast.success("Đã ngắt kết nối Facebook");
+    loadFb();
+  }
 
   useEffect(() => {
     load();
@@ -207,6 +243,18 @@ export function DashboardClient({
         </div>
         <div className="flex items-center gap-2">
           {syncInfo && <span className="text-sm text-muted-foreground">{syncInfo}</span>}
+          {fb.configured &&
+            (fb.connected ? (
+              <Button variant="outline" onClick={disconnectFb} title={fb.name ?? ""}>
+                <Send /> FB: {fb.name || "đã kết nối"} ✕
+              </Button>
+            ) : (
+              <Button variant="outline" asChild>
+                <a href="/api/facebook/connect">
+                  <Send /> Kết nối Facebook
+                </a>
+              </Button>
+            ))}
           <Button onClick={runSync} disabled={syncing}>
             {syncing ? <Loader2 className="animate-spin" /> : <RefreshCw />}
             Đồng bộ dữ liệu

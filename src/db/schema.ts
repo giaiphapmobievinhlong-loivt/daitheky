@@ -101,3 +101,22 @@ export const surveys = pgTable(
 
 export type Survey = typeof surveys.$inferSelect;
 export type NewSurvey = typeof surveys.$inferInsert;
+
+/**
+ * A user's connection to a social platform (currently Facebook). One row per
+ * (userId, provider). `pages` holds the Facebook Pages the user manages, each
+ * with its own page access token used to publish.
+ */
+export const socialAccounts = pgTable("social_accounts", {
+  id: text("id").primaryKey(), // `${provider}:${userId}`
+  userId: text("user_id").notNull(),
+  provider: text("provider").notNull(), // "facebook"
+  externalId: text("external_id"), // fb user id
+  name: text("name"),
+  userAccessToken: text("user_access_token"),
+  pages: jsonb("pages").$type<{ id: string; name: string; accessToken: string; category?: string }[]>().default([]),
+  expiresAt: bigint("expires_at", { mode: "number" }),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export type SocialAccount = typeof socialAccounts.$inferSelect;
