@@ -3,8 +3,8 @@ import { Toaster } from "sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Đại Thế Kỷ – Quản lý & Đăng tin",
-  description: "Đồng bộ danh sách nhà và đăng tin lên mạng xã hội",
+  title: "Đại Thế Kỷ – Quản lý & Đăng tin !",
+  description: "Đồng bộ danh sách nhà và đăng tin lên mạng xã hội!!!",
 };
 
 export default function RootLayout({
