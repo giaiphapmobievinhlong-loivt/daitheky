@@ -53,7 +53,7 @@ export function LoginForm() {
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
-        <CardTitle className="text-xl">Đại Thế Kỷ</CardTitle>
+        <CardTitle className="text-xl">Đại Thế Kỷ !</CardTitle>
         <CardDescription>
           Đăng nhập bằng tài khoản tuan123.daitheky.net
         </CardDescription>
