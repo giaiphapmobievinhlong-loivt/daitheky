@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Combobox } from "@/components/ui/combobox";
 import { buildPost } from "@/lib/post-template";
 import type { ListingDTO } from "@/lib/types";
-import { Copy, Download, ExternalLink, Loader2, Rocket, Send } from "lucide-react";
+import { Copy, Download, ExternalLink, Loader2, Rocket, Send, Check } from "lucide-react";
 
 const FB_PROFILE = "https://www.facebook.com/";
 const FB_GROUPS = "https://www.facebook.com/groups/feed/";
@@ -34,33 +34,64 @@ export function PostDialog({
   const [text, setText] = useState(initial);
   const [downloading, setDownloading] = useState(false);
 
-  // Facebook Page (Fanpage) auto-posting
+  // images
+  const [gallery, setGallery] = useState<string[]>([]);
+  const [loadingGallery, setLoadingGallery] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  // facebook
   const [fbPages, setFbPages] = useState<{ id: string; name: string }[]>([]);
   const [selectedPage, setSelectedPage] = useState("");
   const [posting, setPosting] = useState(false);
 
   useEffect(() => setText(initial), [initial]);
 
+  const allImages = useMemo(() => {
+    if (!listing) return [];
+    const all = [listing.avatar, ...gallery, ...(listing.surveyPhotos ?? [])];
+    return Array.from(new Set(all.filter((x): x is string => !!x)));
+  }, [listing, gallery]);
+
+  // When the dialog opens for a listing: fetch its full gallery + default-select all.
   useEffect(() => {
-    if (!open) return;
+    if (!open || !listing) return;
+    setGallery([]);
+    setLoadingGallery(true);
+    fetch(`/api/listings/${listing.id}/gallery`)
+      .then((r) => (r.ok ? r.json() : { images: [] }))
+      .then((j) => setGallery(Array.isArray(j.images) ? j.images : []))
+      .catch(() => setGallery([]))
+      .finally(() => setLoadingGallery(false));
+
     fetch("/api/facebook/status")
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
         if (j?.connected && Array.isArray(j.pages)) {
           setFbPages(j.pages);
-          if (j.pages[0]) setSelectedPage((p) => p || j.pages[0].id);
-        } else {
-          setFbPages([]);
-        }
+          setSelectedPage((p) => p || j.pages[0]?.id || "");
+        } else setFbPages([]);
       })
       .catch(() => setFbPages([]));
-  }, [open]);
+  }, [open, listing]);
 
-  const images = useMemo(() => {
-    if (!listing) return [];
-    const all = [listing.avatar, ...(listing.images ?? []), ...(listing.surveyPhotos ?? [])];
-    return Array.from(new Set(all.filter((x): x is string => !!x)));
-  }, [listing]);
+  // default-select every image whenever the image set changes
+  useEffect(() => {
+    setSelected(new Set(allImages));
+  }, [allImages]);
+
+  const selectedImages = useMemo(
+    () => allImages.filter((x) => selected.has(x)),
+    [allImages, selected]
+  );
+
+  function toggle(src: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(src)) next.delete(src);
+      else next.add(src);
+      return next;
+    });
+  }
 
   async function copy() {
     try {
@@ -73,26 +104,25 @@ export function PostDialog({
     }
   }
 
-  async function downloadAll() {
-    if (images.length === 0) {
-      toast.info("Căn này chưa có ảnh");
+  async function downloadSelected() {
+    if (selectedImages.length === 0) {
+      toast.info("Chưa chọn ảnh nào");
       return;
     }
     setDownloading(true);
     try {
-      for (let i = 0; i < images.length; i++) {
+      for (let i = 0; i < selectedImages.length; i++) {
         const name = `nha_${listing?.id?.slice(0, 6) || "anh"}_${i + 1}.jpg`;
-        const href = `/api/download?url=${encodeURIComponent(images[i])}&name=${encodeURIComponent(name)}`;
+        const href = `/api/download?url=${encodeURIComponent(selectedImages[i])}&name=${encodeURIComponent(name)}`;
         const a = document.createElement("a");
         a.href = href;
         a.download = name;
         document.body.appendChild(a);
         a.click();
         a.remove();
-        // small delay so the browser doesn't drop concurrent downloads
         await new Promise((r) => setTimeout(r, 400));
       }
-      toast.success(`Đang tải ${images.length} ảnh về máy`);
+      toast.success(`Đang tải ${selectedImages.length} ảnh về máy`);
     } finally {
       setDownloading(false);
     }
@@ -100,6 +130,12 @@ export function PostDialog({
 
   function openPlatform(url: string) {
     window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  async function prepareAndOpen(url: string) {
+    await copy();
+    await downloadSelected();
+    openPlatform(url);
   }
 
   async function postFanpage() {
@@ -112,7 +148,7 @@ export function PostDialog({
       const res = await fetch("/api/facebook/post", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pageId: selectedPage, message: text, photoUrls: images }),
+        body: JSON.stringify({ pageId: selectedPage, message: text, photoUrls: selectedImages }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Đăng thất bại");
@@ -122,13 +158,6 @@ export function PostDialog({
     } finally {
       setPosting(false);
     }
-  }
-
-  // One-click: copy text, download all images, open Facebook.
-  async function prepareAndOpen(url: string) {
-    await copy();
-    await downloadAll();
-    openPlatform(url);
   }
 
   const platforms = [
@@ -144,38 +173,74 @@ export function PostDialog({
         <DialogHeader>
           <DialogTitle>Soạn & đăng bài</DialogTitle>
           <DialogDescription>
-            Nội dung theo mẫu (đã ẩn số nhà). Bấm một nền tảng để tự động: sao chép
-            nội dung + tải sẵn ảnh + mở trang đăng.
+            Chọn ảnh muốn dùng (bỏ tick ảnh có người). Chỉ ảnh được tick mới được
+            tải/đăng.
           </DialogDescription>
         </DialogHeader>
 
-        {images.length > 0 && (
-          <div className="flex gap-2 overflow-x-auto pb-1">
-            {images.slice(0, 10).map((src) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                key={src}
-                src={src}
-                alt=""
-                className="h-20 w-20 flex-shrink-0 rounded-md object-cover border"
-              />
-            ))}
+        {/* Image picker */}
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-sm">
+            <span className="font-medium">
+              Ảnh ({selectedImages.length}/{allImages.length} đã chọn)
+              {loadingGallery && <Loader2 className="inline ml-2 h-3 w-3 animate-spin" />}
+            </span>
+            <div className="flex gap-2">
+              <button
+                className="text-xs text-primary hover:underline"
+                onClick={() => setSelected(new Set(allImages))}
+              >
+                Chọn tất cả
+              </button>
+              <button
+                className="text-xs text-muted-foreground hover:underline"
+                onClick={() => setSelected(new Set())}
+              >
+                Bỏ chọn
+              </button>
+            </div>
           </div>
-        )}
+          <div className="grid grid-cols-5 gap-2 max-h-[220px] overflow-y-auto">
+            {allImages.map((src) => {
+              const on = selected.has(src);
+              return (
+                <button
+                  key={src}
+                  type="button"
+                  onClick={() => toggle(src)}
+                  className={`relative aspect-square overflow-hidden rounded-md border-2 ${
+                    on ? "border-primary" : "border-transparent opacity-50"
+                  }`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={src} alt="" className="h-full w-full object-cover" />
+                  {on && (
+                    <span className="absolute right-0.5 top-0.5 rounded-full bg-primary text-primary-foreground">
+                      <Check className="h-3.5 w-3.5" />
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+            {!loadingGallery && allImages.length === 0 && (
+              <span className="col-span-5 text-sm text-muted-foreground">Không có ảnh</span>
+            )}
+          </div>
+        </div>
 
         <Textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
-          className="min-h-[240px] font-mono text-sm"
+          className="min-h-[200px] font-mono text-sm"
         />
 
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" onClick={copy}>
             <Copy /> Sao chép nội dung
           </Button>
-          <Button variant="outline" onClick={downloadAll} disabled={downloading}>
+          <Button variant="outline" onClick={downloadSelected} disabled={downloading}>
             {downloading ? <Loader2 className="animate-spin" /> : <Download />}
-            Tải tất cả ảnh ({images.length})
+            Tải ảnh đã chọn ({selectedImages.length})
           </Button>
         </div>
 
@@ -218,9 +283,8 @@ export function PostDialog({
         <div className="flex items-start gap-1 text-xs text-muted-foreground">
           <Badge variant="secondary">Lưu ý</Badge>
           <span>
-            Meta không cho đăng tự động lên <b>trang cá nhân</b> và <b>Group</b> — app
-            đã chuẩn bị sẵn (nội dung đã copy + ảnh đã tải), anh/chị chỉ cần dán nội
-            dung, chọn ảnh vừa tải và bấm Đăng. Đăng tự động <b>Fanpage</b> sẽ có ở bước sau.
+            Đăng tay: app copy nội dung + tải ảnh đã chọn + mở trang, anh/chị dán và
+            chọn ảnh. Meta không cho đăng tự động cá nhân/Group.
           </span>
         </div>
       </DialogContent>
